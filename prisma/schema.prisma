@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL") // uses connection pooling
+  directUrl = env("POSTGRES_URL_NON_POOLING") // uses a direct connection
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          String?
+  accounts      Account[]
+  sessions      Session[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Account {
+  userId            String
+  type              String // This field stores the type of account (e.g., "OAuth" or "credentials").
+  provider          String // This field stores the name of the provider (e.g., "google", "github").
+  providerAccountId String // This field stores the unique ID of the account with the provider.
+  refresh_token     String? // Optional field for storing the OAuth refresh token.
+  access_token      String? // Optional field for storing the OAuth access token.
+  expires_at        Int? // Optional field for storing the expiry time of the access token as an integer (typically a UNIX timestamp).
+  token_type        String? // Optional field for storing the type of token (e.g., "Bearer").
+  scope             String? // Optional field for storing the OAuth scopes associated with the account
+  id_token          String? // Optional field for storing the ID token (used in some OAuth providers).
+  session_state     String? // Optional field for storing the session state (relevant in some authentication flows).
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade) // option means that if a user is deleted, all associated accounts will also be deleted.
+
+  @@id([provider, providerAccountId]) // This defines a composite primary key using the provider and providerAccountId fields. This ensures that each combination of provider and providerAccountId is unique in the accounts table.
+  @@map("accounts") // This maps the Account model to the accounts table in the database, ensuring that the Prisma model corresponds to the correct table even if the model name is different from the table name.
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+  @@map("verification_tokens")
+}
